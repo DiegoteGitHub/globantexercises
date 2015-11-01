@@ -1,15 +1,15 @@
 #!/usr/bin/perl -w
 
 use strict;
-use Data::Dumper;
 
 
-my ($line,@search_replace, $pattern_replacement, $pattern, $replacement, $prevpos);
+my ($line,@search_replace, $pattern_replacement, $pattern, $replacement);
 my (%pattern_positions);
 
 # Ask the user to enter a line of text
 print "replace: Please, enter 1 line of text:\n";
 $line = <STDIN>;
+chomp($line);
 
 # Ask for string_to_replace => replacement values
 print "replace: Please, enter space separated strings to match and replace (one pair per line).\n";
@@ -32,43 +32,52 @@ while($pattern_replacement) {
 }
 
 # Get the indexes of matches
-foreach my $patternreplacement (@search_replace) {
+sub create_indexes {
+	my $diff = shift;
+	foreach my $patternreplacement (@search_replace) {
 	($pattern, $replacement) = split(' ', $patternreplacement);
-	while($line =~ m/$pattern/g) {
-		push (@{$pattern_positions{$pattern}}, pos($line) - length($pattern));
-#		print "$pattern: " . (pos($line) - length($pattern)) . "\n";
+		while($line =~ m/$pattern/g) {
+			push (@{$pattern_positions{$pattern}}, pos($line) - length($pattern));
+		}
 	}
 }
 
+sub update_indexes {
+	my ($diff, $start_pos) = @_;
+	foreach $pattern (keys(%pattern_positions)) {
+	        for(my $i = 0; $i < scalar(@{$pattern_positions{$pattern}}); $i++) {
+			if (${$pattern_positions{$pattern}}[$i] > $start_pos) {
+	                        if ($diff < 0) {
+          	                      ${$pattern_positions{$pattern}}[$i] -= $diff;
+                	        } elsif($diff > 0) {
+                        	        ${$pattern_positions{$pattern}}[$i] += $diff
+                        	}
+
+			}
+        	}
+	}	
+}
+
 # Do the work
-$prevpos = 0;
+create_indexes();
 foreach my $patternreplacement (@search_replace) {
 	($pattern, $replacement) = split(' ', $patternreplacement);
+	print "Pattern $pattern, replacement $replacement\n";
+	my ($aux1, $aux2, $start_second_substr, $length_second_substr, $dff);
 	foreach my $position(@{$pattern_positions{$pattern}}) {
-		my ($aux1, $aux2);
-		my $start_second_substr = $position + length($pattern);
-		my $length_second_substr = length($line) - $start_second_substr;
+		$start_second_substr = $position + length($pattern);
 		$aux1 = substr $line, 0, $position;
-		$aux2 = substr $line, $start_second_substr, $length_second_substr;
-		print "Start second substr: $start_second_substr length second substring: $length_second_substr\n";
+		$length_second_substr = length($line) - $start_second_substr;
+		if($start_second_substr < length($line)) {
+			$aux2 = substr $line, $start_second_substr, $length_second_substr;
+		} else {
+			$aux2 = "";
+		}
 		$line = join('', $aux1, $replacement, $aux2);
-		#my $j = 0;
-		#my $difference = length($replacement) - length($pattern);
-		#if ($difference == 0) {
-		#	substr $line, $position, length($replacement), $replacement;
-		#}
-                #for (my $i = $position; $i < $position + length($replacement); $i++) {
-		#	my $char = substr $replacement, $j, 1;
-                #        substr $line, $i, 1, $char;
-                #	$j++;
-		#}
-		#if ($difference > 0) {
-		#	substr $line, $position + length($replacement), $difference, " " x $difference;
-		#} elsif($difference < 0) {
-		#	substr $line, $position - $difference, -$difference, " " x -$difference;
-		#}
+		print "replace: $line\n\n";
+		$dff = length($pattern) - length($replacement);
+		update_indexes($dff, $position);		
 	}
-	print "replace: $line\n";
 }
 
 # Show resulting line
