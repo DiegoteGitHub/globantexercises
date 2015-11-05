@@ -2,6 +2,8 @@
 
 use strict;
 use warnings FATAL => 'all';
+use Data::Dumper;
+
 
 my %small = (
     one => '1',
@@ -38,7 +40,7 @@ my %magnitude = (
 
 sub parse_number {
     my ($num_text, @text_numbers, $g, $x, $w, $n);
-    $num_text = "nine hundred ninety nine thousand nine hundred ninety nine";
+    $num_text = shift;
     @text_numbers = split(' ', $num_text);
     $g = 0;
     $n = 0;
@@ -59,4 +61,21 @@ sub parse_number {
     return $n + $g;
 }
 
-print parse_number();
+my ($filename, $fh, $line, %num_line , @nums, $key, $num, @nums_sorted);
+
+$filename = $ARGV[0];
+open($fh, '<:encoding(UTF-8)', $filename)
+    or die "Could not open file '$filename' $!";
+
+while ($line = <$fh>) {
+    chomp $line;
+    $num = parse_number($line);
+    push @nums, $num;
+    $num_line{$num} = $line;
+}
+
+@nums_sorted = sort {$b <=> $a} @nums;
+
+foreach $key (@nums_sorted) {
+    print "$num_line{$key}\n"
+}
